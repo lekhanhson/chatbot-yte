@@ -8,7 +8,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains import RetrievalQA
 # ====== THIẾT LẬP TOKEN ======
 TELEGRAM_TOKEN = "7849525479:AAHV_73BjqOh3yMe3rOxy5w1YSlFPg3Z7jE"
-OPENAI_API_KEY = "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"
+OPENAI_API_KEY = "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"
 
 # === XỬ LÝ PDF ===
 def extract_text_from_pdf(file_path):
