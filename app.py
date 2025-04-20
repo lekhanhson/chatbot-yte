@@ -7,8 +7,10 @@ from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains import RetrievalQA
 # ====== THIẾT LẬP TOKEN ======
-TELEGRAM_TOKEN = "7849525479:AAHV_73BjqOh3yMe3rOxy5w1YSlFPg3Z7jE"
-OPENAI_API_KEY = "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"
+
+import os
+TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
+OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 
 # === XỬ LÝ PDF ===
 def extract_text_from_pdf(file_path):
