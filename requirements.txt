@@ -3,3 +3,4 @@ transformers
 torch
 PyMuPDF
 scikit-learn
+flask
