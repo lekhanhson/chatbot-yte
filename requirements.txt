@@ -1,8 +1,5 @@
 python-telegram-bot==20.3
+transformers
+torch
 PyMuPDF
-openai
-faiss-cpu
-langchain
-langchain-community
-langchain-openai
-tiktoken
+scikit-learn
