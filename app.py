@@ -1,4 +1,6 @@
 import fitz  # PyMuPDF
+import os
+
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 
@@ -8,10 +10,8 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains import RetrievalQA
 # ====== THIẾT LẬP TOKEN ======
 
-import os
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
-
 # === XỬ LÝ PDF ===
 def extract_text_from_pdf(file_path):
     doc = fitz.open(file_path)
