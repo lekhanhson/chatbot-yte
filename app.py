@@ -1,43 +1,48 @@
+from telegram import Update
+from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
+from transformers import pipeline
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 import fitz  # PyMuPDF
 import os
 
-from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
+# 1. Tải model từ HuggingFace
+qa_pipeline = pipeline("text2text-generation", model="google/flan-t5-base")
 
-from langchain_community.vectorstores import FAISS
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.chains import RetrievalQA
-# ====== THIẾT LẬP TOKEN ======
+# 2. Tải nội dung từ file PDF
+def extract_pdf_chunks(path, chunk_size=300):
+    doc = fitz.open(path)
+    full_text = " ".join([page.get_text() for page in doc])
+    chunks = [full_text[i:i+chunk_size] for i in range(0, len(full_text), chunk_size)]
+    return chunks
 
-TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
-OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
-# === XỬ LÝ PDF ===
-def extract_text_from_pdf(file_path):
-    doc = fitz.open(file_path)
-    return "\n".join([page.get_text() for page in doc])
+chunks = extract_pdf_chunks("huong_dan_chan_doan.pdf")  # <-- đổi tên file tùy bạn
 
-pdf_text = extract_text_from_pdf("huong_dan_chan_doan.pdf")
+# 3. Vector hóa nội dung
+vectorizer = TfidfVectorizer()
+chunk_vectors = vectorizer.fit_transform(chunks)
 
-# === CHIA NHỎ & EMBED ===
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-texts = text_splitter.split_text(pdf_text)
-embedding = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
-vectorstore = FAISS.from_texts(texts, embedding)
+# 4. Hàm tìm đoạn liên quan nhất
+def search_best_chunk(question):
+    question_vector = vectorizer.transform([question])
+    scores = cosine_similarity(question_vector, chunk_vectors)
+    best_idx = scores[0].argmax()
+    return chunks[best_idx]
 
-qa = RetrievalQA.from_chain_type(
-    llm=ChatOpenAI(openai_api_key=OPENAI_API_KEY, model_name="gpt-3.5-turbo"),
-    retriever=vectorstore.as_retriever()
-)
-
-# === TRẢ LỜI CÂU HỎI ===
+# 5. Xử lý tin nhắn Telegram
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_input = update.message.text
-    result = qa.run(user_input)
-    await update.message.reply_text(result)
+    query = update.message.text
+    context_text = search_best_chunk(query)
+    prompt = f"Câu hỏi: {query}\n\nThông tin liên quan: {context_text}\n\nTrả lời:"
+    try:
+        answer = qa_pipeline(prompt, max_new_tokens=200)[0]["generated_text"]
+        await update.message.reply_text(answer.strip())
+    except Exception as e:
+        await update.message.reply_text(f"Bot gặp lỗi: {str(e)}")
 
-# === KHỞI CHẠY ===
+# 6. Chạy bot
 def main():
+    TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.run_polling()
