@@ -16,7 +16,7 @@ def extract_text_from_pdf(file_path):
     doc = fitz.open(file_path)
     return "\n".join([page.get_text() for page in doc])
 
-pdf_text = extract_text_from_pdf("huong_dan_tang_huyet_ap.pdf")
+pdf_text = extract_text_from_pdf("huong_dan_chan_doan.pdf")
 
 # === TẠO VECTORSTORE ===
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
