@@ -1,20 +1,32 @@
-
 <!DOCTYPE html>
-<html lang="vi">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Chatbot Y Tế</title>
+  <meta charset="UTF-8">
+  <title>Chatbot Y Tế</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; }
+    h2 { color: #2c3e50; }
+    .chat-box { border: 1px solid #ccc; padding: 10px; margin-top: 20px; }
+    .chat { margin-bottom: 10px; }
+    .user { color: #2980b9; font-weight: bold; }
+    .bot { color: #27ae60; margin-left: 20px; }
+    input[type="text"] { width: 100%; padding: 8px; }
+    button { margin-top: 10px; padding: 8px 16px; }
+  </style>
 </head>
 <body>
-    <h1>Chatbot Y Tế từ file PDF</h1>
-    <form method="post" action="/ask">
-        <label for="question">Nhập câu hỏi:</label><br>
-        <input type="text" id="question" name="question" style="width: 400px;"><br><br>
-        <input type="submit" value="Gửi câu hỏi">
-    </form>
-    {% if answer %}
-    <h3>Phản hồi từ bot:</h3>
-    <p>{{ answer }}</p>
-    {% endif %}
+  <h2>🤖 Chatbot Y Tế</h2>
+  <form method="POST">
+    <input type="text" name="question" placeholder="Nhập câu hỏi..." required>
+    <button type="submit">Gửi</button>
+  </form>
+  <div class="chat-box">
+    {% for q, a in history %}
+      <div class="chat">
+        <div class="user">👤 Bạn: {{ q }}</div>
+        <div class="bot">🤖 Bot: {{ a }}</div>
+      </div>
+    {% endfor %}
+  </div>
 </body>
 </html>
