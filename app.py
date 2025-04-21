@@ -35,21 +35,22 @@ def search_top_chunks(question, top_n=3):
 # --- Sinh câu trả lời từ GPT ---
 def generate_answer(question):
     contexts = search_top_chunks(question)
-    prompt = f"""Bạn là trợ lý y tế. Hãy trả lời chính xác và rõ ràng cho câu hỏi sau dựa vào tài liệu dưới đây. Nếu không thấy thì trả lời 'Trong tài liệu không có thông tin'.
+    if all(not ctx.strip() for ctx in contexts):
+        return "⚠️ Trong tài liệu không có thông tin liên quan."
+
+    prompt = f"""Bạn là trợ lý y tế. Hãy trả lời chính xác và rõ ràng cho câu hỏi sau dựa vào tài liệu dưới đây.
 
 Câu hỏi: {question}
 
 Tài liệu tham khảo:
 1. {contexts[0]}
-
 2. {contexts[1]}
-
 3. {contexts[2]}
 
 Trả lời:"""
 
     response = openai.chat.completions.create(
-        model=OPENAI_MODEL,
+        model="gpt-4-turbo",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.3,
         max_tokens=500
