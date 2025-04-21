@@ -3,43 +3,56 @@ import fitz  # PyMuPDF
 from flask import Flask, request, render_template
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 import openai
 import threading
 
-# Khởi tạo Flask app
+# Init Flask
 flask_app = Flask(__name__)
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Cấu hình API Key cho OpenAI
-openai.api_key = os.environ.get("OPENAI_API_KEY")
-
-# Đọc và chia nhỏ file PDF
+# Load PDF content
 def extract_pdf_chunks(path, chunk_size=300):
     doc = fitz.open(path)
     full_text = " ".join([page.get_text() for page in doc])
-    return [full_text[i:i+chunk_size] for i in range(0, len(full_text), chunk_size)]
+    chunks = [full_text[i:i + chunk_size] for i in range(0, len(full_text), chunk_size)]
+    return chunks
 
 chunks = extract_pdf_chunks("huong_dan_chan_doan.pdf")
+vectorizer = TfidfVectorizer()
+chunk_vectors = vectorizer.fit_transform(chunks)
 
-# Tìm đoạn văn chứa nội dung liên quan
-def search_best_chunk(question):
-    return max(chunks, key=lambda chunk: question.lower() in chunk.lower())
+def search_top_chunks(question, top_k=3):
+    question_vector = vectorizer.transform([question])
+    scores = cosine_similarity(question_vector, chunk_vectors)[0]
+    top_indices = scores.argsort()[-top_k:][::-1]
+    return [chunks[i] for i in top_indices]
 
-# Gọi OpenAI để sinh câu trả lời
 def generate_answer(question):
-    context = search_best_chunk(question)
-    messages = [
-        {"role": "system", "content": "Bạn là trợ lý y tế dựa trên dữ liệu PDF."},
-        {"role": "user", "content": f"Dữ liệu tham khảo: {context}\n\nCâu hỏi: {question}" },
-    ]
+    top_chunks = search_top_chunks(question)
+    context = "\n\n".join(f"[{i+1}] {chunk}" for i, chunk in enumerate(top_chunks))
+    prompt = f"""Trả lời câu hỏi dựa duy nhất vào tài liệu dưới đây. Nếu tài liệu không chứa thông tin phù hợp, hãy trả lời: 'Tài liệu không có thông tin liên quan.'
+    
+Tài liệu:
+{context}
+
+Câu hỏi: {question}
+
+Trả lời:"""
     response = openai.chat.completions.create(
         model="gpt-3.5-turbo",
-        messages=messages,
-        temperature=0.7,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.3,
     )
     return response.choices[0].message.content.strip()
 
-# Giao diện Web
+
+
+
+# Flask web UI
 history = []
+
 @flask_app.route("/", methods=["GET", "POST"])
 def index():
     global history
@@ -49,7 +62,7 @@ def index():
         history.append((question, answer))
     return render_template("index.html", history=history)
 
-# Bot Telegram
+# Telegram Bot
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     question = update.message.text
     answer = generate_answer(question)
