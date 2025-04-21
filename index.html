@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Chatbot Y Tế</title>
+</head>
+<body>
+    <h1>Chatbot Y Tế từ file PDF</h1>
+    <form method="post" action="/ask">
+        <label for="question">Nhập câu hỏi:</label><br>
+        <input type="text" id="question" name="question" style="width: 400px;"><br><br>
+        <input type="submit" value="Gửi câu hỏi">
+    </form>
+    {% if answer %}
+    <h3>Phản hồi từ bot:</h3>
+    <p>{{ answer }}</p>
+    {% endif %}
+</body>
+</html>
