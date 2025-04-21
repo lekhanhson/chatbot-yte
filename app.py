@@ -1,19 +1,17 @@
 import os
 import fitz  # PyMuPDF
-from flask import Flask, request, render_template
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 from transformers import pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from flask import Flask, request, render_template
 import threading
 
-app = Flask(__name__)
-
-# Tải mô hình HuggingFace miễn phí
+flask_app = Flask(__name__)
 qa_pipeline = pipeline("text2text-generation", model="google/flan-t5-base")
 
-# Trích xuất nội dung từ PDF và chia nhỏ
+# Trích xuất nội dung từ PDF thành đoạn nhỏ
 def extract_pdf_chunks(path, chunk_size=300):
     doc = fitz.open(path)
     full_text = " ".join([page.get_text() for page in doc])
@@ -31,42 +29,41 @@ def search_best_chunk(question):
     return chunks[best_idx]
 
 def generate_answer(question):
-    context_chunk = search_best_chunk(question)
-    prompt = f"Câu hỏi: {question}\n\nDữ liệu hướng dẫn: {context_chunk}\n\nTrả lời:"
-    result = qa_pipeline(prompt, max_new_tokens=200)[0]["generated_text"]
-    return result.strip()
+    context = search_best_chunk(question)
+    prompt = f"Câu hỏi: {question}
 
-@app.route("/", methods=["GET"])
+Dữ liệu hướng dẫn: {context}
+
+Trả lời:"
+    output = qa_pipeline(prompt, max_new_tokens=200)[0]["generated_text"]
+    return output.strip()
+
+# Giao diện Web
+history = []
+@flask_app.route("/", methods=["GET", "POST"])
 def index():
-    return render_template("index.html")
-
-@app.route("/ask", methods=["POST"])
-def ask():
-    question = request.form.get("question")
-    try:
+    global history
+    if request.method == "POST":
+        question = request.form["question"]
         answer = generate_answer(question)
-    except Exception as e:
-        answer = f"Lỗi bot: {str(e)}"
-    return render_template("index.html", answer=answer)
+        history.append((question, answer))
+    return render_template("index.html", history=history)
 
-# TELEGRAM
+# Giao diện Telegram
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_question = update.message.text
-    try:
-        answer = generate_answer(user_question)
-        await update.message.reply_text(answer)
-    except Exception as e:
-        await update.message.reply_text(f"Lỗi bot: {str(e)}")
+    question = update.message.text
+    answer = generate_answer(question)
+    await update.message.reply_text(answer)
 
-def run_telegram():
-    token = os.environ.get("TELEGRAM_TOKEN")
-    if not token:
-        print("⚠️ Thiếu TELEGRAM_TOKEN")
-        return
-    app_tg = ApplicationBuilder().token(token).build()
-    app_tg.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app_tg.run_polling()
+def run_flask():
+    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
+def main():
+    TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.run_polling()
 
 if __name__ == "__main__":
-    threading.Thread(target=run_telegram).start()
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+    threading.Thread(target=run_flask).start()
+    main()
