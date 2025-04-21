@@ -1,24 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <title>Chatbot Y Tế</title>
-    <style>
-        body { font-family: Arial; margin: 40px; text-align: center; }
-        input[type="text"] { width: 60%; padding: 10px; font-size: 16px; }
-        input[type="submit"] { padding: 10px 20px; font-size: 16px; }
-        .message { margin-top: 20px; }
-    </style>
 </head>
 <body>
-    <h1>🩺 Chatbot Y Tế</h1>
-    <form method="post">
-        <input name="question" type="text" placeholder="Nhập câu hỏi của bạn..." required>
-        <input type="submit" value="Gửi">
+    <h1>🤖 Chatbot Y Tế</h1>
+    <form method="POST">
+        <input type="text" name="question" style="width: 600px;" placeholder="Nhập câu hỏi..." required>
+        <button type="submit">Gửi</button>
     </form>
-    <div class="message">
-        {% for q, a in history %}
-            <p><strong>❓ {{ q }}</strong><br>💬 {{ a }}</p>
-        {% endfor %}
-    </div>
+    <hr>
+    {% for q, a in history %}
+        <p><strong>❓ {{ q }}</strong><br>💬 {{ a }}</p>
+    {% endfor %}
 </body>
 </html>
