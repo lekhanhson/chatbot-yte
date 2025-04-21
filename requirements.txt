@@ -1,7 +1,6 @@
 flask
-fitz
-PyMuPDF==1.25.5
+python-telegram-bot==20.3
+PyMuPDF
 transformers
 scikit-learn
-python-telegram-bot==20.3
 torch
