@@ -1,42 +1,53 @@
 import os
 import fitz  # PyMuPDF
+from flask import Flask, request, render_template
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
-from transformers import pipeline
+import openai
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from flask import Flask, request, render_template
 import threading
 
+# Cài đặt Flask app
 flask_app = Flask(__name__)
-qa_pipeline = pipeline("text2text-generation", model="google/flan-t5-base")
 
-# Trích xuất nội dung từ PDF thành đoạn nhỏ
+# Cấu hình OpenAI API key
+openai.api_key = os.environ.get("OPENAI_API_KEY")
+
+# Trích xuất nội dung từ PDF thành các đoạn nhỏ
 def extract_pdf_chunks(path, chunk_size=300):
     doc = fitz.open(path)
     full_text = " ".join([page.get_text() for page in doc])
-    chunks = [full_text[i:i+chunk_size] for i in range(0, len(full_text), chunk_size)]
+    chunks = [full_text[i:i + chunk_size] for i in range(0, len(full_text), chunk_size)]
     return chunks
 
+# Đọc và xử lý PDF
 chunks = extract_pdf_chunks("huong_dan_chan_doan.pdf")
 vectorizer = TfidfVectorizer()
 chunk_vectors = vectorizer.fit_transform(chunks)
 
+# Tìm đoạn văn bản phù hợp nhất
 def search_best_chunk(question):
     question_vector = vectorizer.transform([question])
     scores = cosine_similarity(question_vector, chunk_vectors)
     best_idx = scores[0].argmax()
     return chunks[best_idx]
 
+# Tạo câu trả lời từ GPT
 def generate_answer(question):
     context = search_best_chunk(question)
-    prompt = f"""Câu hỏi: {question}
+    prompt = f"Câu hỏi: {question}\n\nDữ liệu hướng dẫn: {context}\n\nTrả lời:"
 
-Dữ liệu hướng dẫn: {context}
-
-Trả lời:"""
-    output = qa_pipeline(prompt, max_new_tokens=200)[0]["generated_text"]
-    return output.strip()
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "Bạn là một chuyên gia y tế trả lời câu hỏi dựa trên tài liệu."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.3,
+        max_tokens=500
+    )
+    return response.choices[0].message["content"].strip()
 
 # Giao diện Web
 history = []
@@ -49,17 +60,18 @@ def index():
         history.append((question, answer))
     return render_template("index.html", history=history)
 
-# Giao diện Telegram
+# Xử lý tin nhắn Telegram
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     question = update.message.text
     answer = generate_answer(question)
     await update.message.reply_text(answer)
 
+# Khởi chạy Flask và Telegram song song
 def run_flask():
-    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), debug=False, use_reloader=False)
+    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
 
 def main():
-    TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
+    TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.run_polling()
