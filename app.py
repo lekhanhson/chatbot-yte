@@ -6,10 +6,12 @@ from transformers import pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# (Tuỳ chọn) Mở port để Render không báo lỗi (khi deploy dạng Web Service)
+# --- Flask UI đơn giản để báo bot đang chạy ---
 import threading
 from flask import Flask
+
 flask_app = Flask(__name__)
+
 @flask_app.route("/")
 def home():
     return "Bot đang chạy!"
@@ -17,31 +19,33 @@ def home():
 def run_flask():
     flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
 
-# Tải mô hình HuggingFace (miễn phí)
+# --- Mô hình HuggingFace miễn phí ---
 qa_pipeline = pipeline("text2text-generation", model="google/flan-t5-base")
 
-# Hàm trích xuất nội dung PDF
+# --- Trích xuất nội dung từ PDF ---
 def extract_pdf_chunks(path, chunk_size=300):
     doc = fitz.open(path)
     full_text = " ".join([page.get_text() for page in doc])
     chunks = [full_text[i:i+chunk_size] for i in range(0, len(full_text), chunk_size)]
     return chunks
 
-# Đọc nội dung PDF
-chunks = extract_pdf_chunks("huong_dan_chan_doan.pdf")
+# --- Đọc file PDF khi khởi chạy ---
+PDF_PATH = "huong_dan_chan_doan.pdf"
+if not os.path.exists(PDF_PATH):
+    raise FileNotFoundError(f"Không tìm thấy file PDF: {PDF_PATH}")
 
-# Vector hóa để tìm kiếm
+chunks = extract_pdf_chunks(PDF_PATH)
 vectorizer = TfidfVectorizer()
 chunk_vectors = vectorizer.fit_transform(chunks)
 
-# Hàm tìm đoạn văn phù hợp nhất
+# --- Tìm đoạn văn phù hợp nhất ---
 def search_best_chunk(question):
     question_vector = vectorizer.transform([question])
     scores = cosine_similarity(question_vector, chunk_vectors)
     best_idx = scores[0].argmax()
     return chunks[best_idx]
 
-# Xử lý khi người dùng nhắn tin
+# --- Xử lý tin nhắn từ người dùng ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_question = update.message.text
     context_chunk = search_best_chunk(user_question)
@@ -52,14 +56,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"Lỗi bot: {str(e)}")
 
-# Hàm chính để chạy bot
+# --- Hàm chạy Telegram Bot ---
 def main():
-    TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
+    TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+    if not TELEGRAM_TOKEN:
+        print("❌ Chưa khai báo TELEGRAM_TOKEN trong biến môi trường.")
+        return
+
+    print("✅ Bot Telegram đang khởi động...")
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    print("🚀 Polling Telegram...")
     app.run_polling()
 
-# Chạy Flask (giả lập cổng) và Telegram song song
+# --- Chạy Flask + Telegram song song ---
 if __name__ == "__main__":
     threading.Thread(target=run_flask).start()
     main()
