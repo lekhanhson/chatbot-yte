@@ -30,11 +30,11 @@ def search_best_chunk(question):
 
 def generate_answer(question):
     context = search_best_chunk(question)
-    prompt = f"Câu hỏi: {question}
+    prompt = f"""Câu hỏi: {question}
 
 Dữ liệu hướng dẫn: {context}
 
-Trả lời:"
+Trả lời:"""
     output = qa_pipeline(prompt, max_new_tokens=200)[0]["generated_text"]
     return output.strip()
 
