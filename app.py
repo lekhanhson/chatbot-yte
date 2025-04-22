@@ -22,7 +22,7 @@ def extract_pdf_chunks(path, chunk_size=500):
     full_text = " ".join([page.get_text() for page in doc])
     return [full_text[i:i+chunk_size] for i in range(0, len(full_text), chunk_size)]
 
-chunks = extract_pdf_chunks("tinh_huong_cap_cuu.pdf")
+chunks = extract_pdf_chunks("tinh_huong_khan_cap.pdf")
 vectorizer = TfidfVectorizer()
 chunk_vectors = vectorizer.fit_transform(chunks)
 
