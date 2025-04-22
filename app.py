@@ -13,16 +13,16 @@ import re
 # --- Flask App ---
 flask_app = Flask(__name__)
 
-# --- OpenAI API Key ---
+# --- OpenAI API ---
 openai.api_key = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = "gpt-4-turbo"
 
-# --- Tách từng tình huống từ PDF dựa vào số thứ tự ---
+# --- Tách từng tình huống theo số thứ tự ---
 def extract_cases_by_structure(path):
     doc = fitz.open(path)
     full_text = "\n".join([page.get_text() for page in doc])
 
-    pattern = r'\n\d{1,2}\.\s'  # Tách theo số thứ tự 1. 2. 3.
+    pattern = r'\n\d{1,2}\.\s'  # Tìm đầu các tình huống: 1. 2. 3.
     parts = re.split(pattern, full_text)
     headers = re.findall(r'\n\d{1,2}\.\s', full_text)
 
@@ -33,23 +33,23 @@ def extract_cases_by_structure(path):
         cases.append(case_text)
     return cases
 
-# --- Load và xử lý dữ liệu ---
+# --- Load dữ liệu ---
 chunks = extract_cases_by_structure("tinh_huong_khan_cap.pdf")
 vectorizer = TfidfVectorizer()
 chunk_vectors = vectorizer.fit_transform(chunks)
 
-# --- Chọn tình huống bất kỳ ---
+# --- Chọn 1 tình huống bất kỳ ---
 def pick_random_scenario():
     return random.choice(chunks)
 
-# --- Tìm đoạn liên quan để đánh giá ---
+# --- Tìm các đoạn liên quan nhất đến câu trả lời ---
 def search_relevant_chunks(text, top_n=3):
     vec = vectorizer.transform([text])
     sims = cosine_similarity(vec, chunk_vectors).flatten()
     top_ids = sims.argsort()[-top_n:][::-1]
     return [chunks[i] for i in top_ids]
 
-# --- Phân tích phản hồi của học viên ---
+# --- Phân tích câu trả lời của học viên ---
 def analyze_response(user_answer, scenario_text):
     context_chunks = search_relevant_chunks(scenario_text)
     prompt = f"""
@@ -58,7 +58,7 @@ Bạn là trợ lý đào tạo điều dưỡng. Hãy đánh giá phản hồi 
 2. Nếu chưa đúng thì sai ở đâu?
 3. Gợi ý và lưu ý thêm cho học viên.
 
----  
+---
 📌 Tình huống:
 {scenario_text}
 
@@ -80,6 +80,12 @@ Trả lời:
     )
     return res.choices[0].message.content.strip()
 
+# --- Chỉ hiện phần mô tả, không hiện cách xử lý ---
+def extract_visible_part(scenario_text):
+    cutoff = "Xử lý tại chỗ"
+    parts = scenario_text.split(cutoff)
+    return parts[0].strip() + "\n\n👉 Bạn sẽ xử lý thế nào trong 3 phút đầu tiên?"
+
 # --- Giao tiếp Telegram ---
 user_states = {}
 
@@ -93,8 +99,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id not in user_states or user_states[user_id]["status"] == "idle":
         scenario = pick_random_scenario()
         user_states[user_id] = {"status": "awaiting_response", "scenario": scenario}
-
         scenario_number = chunks.index(scenario) + 1
+        visible = extract_visible_part(scenario)
 
         if lowered_text in greetings:
             await update.message.reply_text(
@@ -104,16 +110,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await update.message.reply_text("🔔 Bắt đầu kiểm tra tình huống khẩn cấp đầu tiên:")
 
-        await update.message.reply_text(
-            f"🧪 Tình huống {scenario_number:02d}:\n\n{scenario}\n\n👉 Bạn sẽ xử lý thế nào trong 3 phút đầu tiên?"
-        )
+        await update.message.reply_text(f"🧪 Tình huống {scenario_number:02d}:\n\n{visible}")
         return
 
-    # Nếu đang chờ câu trả lời
     if user_states[user_id]["status"] == "awaiting_response":
         scenario = user_states[user_id]["scenario"]
         feedback = analyze_response(message_text, scenario)
-
         await update.message.reply_text(f"📋 Đánh giá từ trợ lý:\n\n{feedback}")
         user_states[user_id]["status"] = "idle"
         return
@@ -126,7 +128,7 @@ def index():
 def run_flask():
     flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
 
-# --- Chạy Telegram Bot ---
+# --- Telegram Bot ---
 def main():
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
     if not TELEGRAM_TOKEN:
