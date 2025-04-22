@@ -52,7 +52,7 @@ def search_relevant_chunks(text, top_n=3):
 def analyze_response(user_answer, scenario_text):
     context_chunks = search_relevant_chunks(scenario_text)
     prompt = f"""
-Bạn là trợ lý đào tạo điều dưỡng. Hãy đánh giá phản hồi của học viên dựa trên tình huống khẩn cấp và tài liệu hướng dẫn. Hãy phản hồi theo cấu trúc sau:
+Bạn là trợ lý đào tạo điều dưỡng. Hãy đánh giá phản hồi của học viên dựa trên tình huống khẩn cấp và tài liệu hướng dẫn. Hãy phản hồi ngắn gọn, theo cấu trúc sau:
 
 1. **Câu trả lời có phù hợp không?**
 2. **Nếu chưa đúng thì sai ở đâu?**
@@ -74,7 +74,7 @@ Bạn là trợ lý đào tạo điều dưỡng. Hãy đánh giá phản hồi 
     res = openai.chat.completions.create(
         model=OPENAI_MODEL,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
+        temperature=0.1,
         max_tokens=500
     )
     return res.choices[0].message.content.strip()
@@ -121,7 +121,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if lowered_text in greetings:
             await update.message.reply_text(
-                "👋 Xin chào! Tôi là **Trợ lý Hội Nhập Điều Dưỡng**, nhiệm vụ của tôi là hỗ trợ bạn luyện phản xạ trong các tình huống khẩn cấp thực tế.\n\n"
+                "👋 Xin chào! Tôi là TRỢ LÝ AI, tôi sẽ giúp bạn luyện phản xạ trong các tình huống khẩn cấp thực tế.\n\n"
                 "Bây giờ, hãy bắt đầu với một tình huống đầu tiên nhé:"
             )
         else:
@@ -136,8 +136,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         stars = guess_star_rating(feedback)
         emotion = get_emotional_feedback(stars)
 
-        await update.message.reply_text(f"📋 ĐÁNH GIÁ CHẤT LƯỢNG CÂU TRẢ LỜI: \n\n{feedback}")
-        #await update.message.reply_text(emotion)
+        await update.message.reply_text(f"📋 ĐÁNH GIÁ CHẤT LƯỢNG: \n\n{feedback}")
         await update.message.reply_text("🔄 Nào, thêm một tình huống tiếp theo nhé:")
 
         next_scenario = pick_random_scenario()
