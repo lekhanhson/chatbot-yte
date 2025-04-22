@@ -22,13 +22,15 @@ def extract_pdf_chunks(path, chunk_size=500):
     full_text = " ".join([page.get_text() for page in doc])
     return [full_text[i:i+chunk_size] for i in range(0, len(full_text), chunk_size)]
 
-chunks = extract_pdf_chunks("50_tinh_huong_cap_cuu.pdf")
+chunks = extract_pdf_chunks("tinh_huong_cap_cuu.pdf")
 vectorizer = TfidfVectorizer()
 chunk_vectors = vectorizer.fit_transform(chunks)
 
 # --- Chọn 1 tình huống khẩn cấp ngẫu nhiên ---
 def pick_random_scenario():
     candidates = [chunk for chunk in chunks if "Mô tả triệu chứng ban đầu" in chunk]
+    if not candidates:
+        return "⚠️ Không tìm thấy tình huống khẩn cấp nào trong tài liệu. Vui lòng kiểm tra lại file PDF."
     return random.choice(candidates)
 
 # --- Tìm các đoạn liên quan đến câu trả lời ---
