@@ -136,8 +136,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         stars = guess_star_rating(feedback)
         emotion = get_emotional_feedback(stars)
 
-        await update.message.reply_text(f"📋 Đánh giá từ trợ lý: {stars}\n\n{feedback}")
-        await update.message.reply_text(emotion)
+        await update.message.reply_text(f"📋 ĐÁNH GIÁ CHẤT LƯỢNG CÂU TRẢ LỜI: \n\n{feedback}")
+        #await update.message.reply_text(emotion)
         await update.message.reply_text("🔄 Nào, thêm một tình huống tiếp theo nhé:")
 
         next_scenario = pick_random_scenario()
