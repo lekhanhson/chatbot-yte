@@ -9,6 +9,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import threading
 import re
+import asyncio
 
 # --- Flask App ---
 flask_app = Flask(__name__)
@@ -21,11 +22,9 @@ OPENAI_MODEL = "gpt-4-turbo"
 def extract_cases_by_structure(path):
     doc = fitz.open(path)
     full_text = "\n".join([page.get_text() for page in doc])
-
     pattern = r'\n\d{1,2}\.\s'  # Tìm đầu các tình huống: 1. 2. 3.
     parts = re.split(pattern, full_text)
     headers = re.findall(r'\n\d{1,2}\.\s', full_text)
-
     cases = []
     for i, part in enumerate(parts[1:], start=1):
         header = headers[i-1].strip()
@@ -42,14 +41,14 @@ chunk_vectors = vectorizer.fit_transform(chunks)
 def pick_random_scenario():
     return random.choice(chunks)
 
-# --- Tìm các đoạn liên quan nhất đến câu trả lời ---
+# --- Tìm các đoạn liên quan để đánh giá phản hồi ---
 def search_relevant_chunks(text, top_n=3):
     vec = vectorizer.transform([text])
     sims = cosine_similarity(vec, chunk_vectors).flatten()
     top_ids = sims.argsort()[-top_n:][::-1]
     return [chunks[i] for i in top_ids]
 
-# --- Phân tích câu trả lời của học viên ---
+# --- Phân tích phản hồi của học viên ---
 def analyze_response(user_answer, scenario_text):
     context_chunks = search_relevant_chunks(scenario_text)
     prompt = f"""
@@ -80,7 +79,32 @@ Trả lời:
     )
     return res.choices[0].message.content.strip()
 
-# --- Chỉ hiện phần mô tả, không hiện cách xử lý ---
+# --- Dự đoán mức sao từ phản hồi AI ---
+def guess_star_rating(feedback_text):
+    feedback = feedback_text.lower()
+    if "phù hợp hoàn toàn" in feedback or "rất tốt" in feedback:
+        return "⭐⭐⭐⭐⭐"
+    elif "phù hợp" in feedback and "thiếu" not in feedback:
+        return "⭐⭐⭐⭐"
+    elif "phù hợp một phần" in feedback or "thiếu" in feedback:
+        return "⭐⭐⭐"
+    elif "chưa đúng" in feedback or "không phù hợp" in feedback:
+        return "⭐⭐"
+    else:
+        return "⭐"
+
+# --- Tâm trạng phản hồi tương ứng với số sao ---
+def get_emotional_feedback(stars):
+    mapping = {
+        "⭐⭐⭐⭐⭐": "🌟 Tuyệt vời! Bạn đã xử lý rất tốt, tiếp tục phát huy nhé!",
+        "⭐⭐⭐⭐": "👍 Khá tốt! Nhưng vẫn có thể chi tiết hơn.",
+        "⭐⭐⭐": "😐 Bạn đã đi đúng hướng, cố gắng hoàn thiện hơn.",
+        "⭐⭐": "⚠️ Bạn còn bỏ sót nhiều bước quan trọng.",
+        "⭐": "❌ Cần luyện tập kỹ hơn, đừng lo – cứ tiếp tục nhé!"
+    }
+    return mapping.get(stars, "🙂 Tiếp tục nhé!")
+
+# --- Cắt phần hiển thị đến mô tả triệu chứng thôi ---
 def extract_visible_part(scenario_text):
     cutoff = "Xử lý tại chỗ"
     parts = scenario_text.split(cutoff)
@@ -93,7 +117,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     message_text = update.message.text.strip()
     lowered_text = message_text.lower()
-
     greetings = ["hi", "hello", "xin chào", "chào", "alo", "yo"]
 
     if user_id not in user_states or user_states[user_id]["status"] == "idle":
@@ -116,21 +139,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_states[user_id]["status"] == "awaiting_response":
         scenario = user_states[user_id]["scenario"]
         feedback = analyze_response(message_text, scenario)
-        await update.message.reply_text(f"📋 Đánh giá từ trợ lý:\n\n{feedback}")
-    
-        # ➕ Gợi ý tiếp tục
+        stars = guess_star_rating(feedback)
+        emotion = get_emotional_feedback(stars)
+
+        await update.message.reply_text(f"📋 Đánh giá từ trợ lý: {stars}\n\n{feedback}")
+        await update.message.reply_text(emotion)
         await update.message.reply_text("🔄 Nào, thêm một tình huống tiếp theo nhé:")
-    
-        # Gửi tiếp tình huống mới
+
         next_scenario = pick_random_scenario()
         scenario_number = chunks.index(next_scenario) + 1
         visible = extract_visible_part(next_scenario)
-    
+
         await update.message.reply_text(f"🧪 Tình huống {scenario_number:02d}:\n\n{visible}")
         user_states[user_id] = {"status": "awaiting_response", "scenario": next_scenario}
         return
 
-# --- Web UI ---
+# --- Web UI (nếu dùng) ---
 @flask_app.route("/", methods=["GET"])
 def index():
     return render_template("index.html")
@@ -138,7 +162,7 @@ def index():
 def run_flask():
     flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
 
-# --- Telegram Bot ---
+# --- Telegram bot khởi động ---
 def main():
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
     if not TELEGRAM_TOKEN:
