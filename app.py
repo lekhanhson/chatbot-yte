@@ -16,7 +16,7 @@ flask_app = Flask(__name__)
 openai.api_key = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = "gpt-4-turbo"
 
-# --- Load tài liệu PDF và chia đoạn ---
+# --- Load và chia nhỏ PDF ---
 def extract_pdf_chunks(path, chunk_size=500):
     doc = fitz.open(path)
     full_text = " ".join([page.get_text() for page in doc])
@@ -26,39 +26,41 @@ chunks = extract_pdf_chunks("50_tinh_huong_cap_cuu.pdf")
 vectorizer = TfidfVectorizer()
 chunk_vectors = vectorizer.fit_transform(chunks)
 
-# --- Chọn 1 tình huống khẩn cấp có mô tả ---
+# --- Chọn 1 tình huống khẩn cấp ngẫu nhiên ---
 def pick_random_scenario():
     candidates = [chunk for chunk in chunks if "Mô tả triệu chứng ban đầu" in chunk]
     return random.choice(candidates)
 
-# --- Tìm các đoạn liên quan nhất đến nội dung phản hồi ---
+# --- Tìm các đoạn liên quan đến câu trả lời ---
 def search_relevant_chunks(text, top_n=3):
     vec = vectorizer.transform([text])
     sims = cosine_similarity(vec, chunk_vectors).flatten()
     top_ids = sims.argsort()[-top_n:][::-1]
     return [chunks[i] for i in top_ids]
 
-# --- Ghi nhớ trạng thái người dùng ---
-user_states = {}
-
-# --- Phân tích câu trả lời của người dùng bằng GPT ---
+# --- Phân tích câu trả lời từ người dùng ---
 def analyze_response(user_answer, scenario_text):
     context_chunks = search_relevant_chunks(scenario_text)
     prompt = f"""
-Bạn là trợ lý đào tạo điều dưỡng. Hãy đánh giá câu trả lời của học viên dựa trên tình huống khẩn cấp và tài liệu hướng dẫn. Hãy chỉ ra điểm đúng, điểm chưa đầy đủ và bổ sung hướng dẫn nếu cần.
+Bạn là trợ lý đào tạo điều dưỡng. Hãy đánh giá phản hồi của học viên dựa trên tình huống khẩn cấp và tài liệu hướng dẫn. Hãy phân tích:
+1. Câu trả lời có phù hợp không?
+2. Nếu chưa đúng thì sai ở đâu?
+3. Gợi ý và lưu ý thêm cho học viên.
 
-Tình huống: {scenario_text}
+---  
+📌 Tình huống:
+{scenario_text}
 
-Phản hồi của học viên:
+✏️ Phản hồi của học viên:
 {user_answer}
 
-Tài liệu tham khảo:
+📚 Tài liệu nội bộ:
 1. {context_chunks[0]}
 2. {context_chunks[1]}
 3. {context_chunks[2]}
 
-Đánh giá:"""
-
+Trả lời:
+"""
     res = openai.chat.completions.create(
         model=OPENAI_MODEL,
         messages=[{"role": "user", "content": prompt}],
@@ -67,27 +69,43 @@ Tài liệu tham khảo:
     )
     return res.choices[0].message.content.strip()
 
-# --- Giao tiếp với Telegram ---
+# --- Lưu trạng thái hội thoại của từng người dùng ---
+user_states = {}
+
+# --- Bot Telegram chính ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     message_text = update.message.text.strip()
+    lowered_text = message_text.lower()
 
-    # Trường hợp mới bắt đầu
+    greetings = ["hi", "hello", "xin chào", "chào", "alo", "yo"]
+
+    # Nếu chưa có trạng thái hoặc đã kết thúc vòng trước
     if user_id not in user_states or user_states[user_id]["status"] == "idle":
         scenario = pick_random_scenario()
         user_states[user_id] = {"status": "awaiting_response", "scenario": scenario}
-        await update.message.reply_text(f"🩺 Tình huống khẩn cấp:\n\n{scenario}\n\n👉 Bạn sẽ xử lý thế nào trong 3 phút đầu tiên?")
+
+        if lowered_text in greetings:
+            await update.message.reply_text(
+                "👋 Xin chào! Tôi là **Trợ lý Hội Nhập Điều Dưỡng**, nhiệm vụ của tôi là hỗ trợ bạn luyện phản xạ trong các tình huống khẩn cấp thực tế.\n\n"
+                "Bây giờ, hãy bắt đầu với một tình huống đầu tiên nhé:"
+            )
+        else:
+            await update.message.reply_text("🔔 Bắt đầu kiểm tra tình huống khẩn cấp đầu tiên:")
+
+        await update.message.reply_text(f"🧪 Tình huống:\n\n{scenario}\n\n👉 Bạn sẽ xử lý thế nào trong 3 phút đầu tiên?")
         return
 
-    # Trường hợp đang chờ người dùng trả lời
+    # Nếu đang chờ người dùng phản hồi
     if user_states[user_id]["status"] == "awaiting_response":
         scenario = user_states[user_id]["scenario"]
         feedback = analyze_response(message_text, scenario)
+
         await update.message.reply_text(f"📋 Đánh giá từ trợ lý:\n\n{feedback}")
         user_states[user_id]["status"] = "idle"
         return
 
-# --- Giao diện Web đơn giản ---
+# --- Giao diện web đơn giản ---
 @flask_app.route("/", methods=["GET"])
 def index():
     return render_template("index.html")
@@ -96,18 +114,18 @@ def index():
 def run_flask():
     flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
 
-# --- Chạy Telegram Bot ---
+# --- Khởi động Telegram bot ---
 def main():
-    TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+    TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
     if not TELEGRAM_TOKEN:
-        print("⚠️ Thiếu TELEGRAM_TOKEN trong biến môi trường!")
+        print("⚠️ TELEGRAM_TOKEN chưa được thiết lập trong môi trường!")
         return
 
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.run_polling()
 
-# --- Chạy cả Flask và Telegram song song ---
+# --- Chạy song song Flask và Telegram ---
 if __name__ == "__main__":
     threading.Thread(target=run_flask).start()
     main()
