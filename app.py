@@ -117,7 +117,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         scenario = user_states[user_id]["scenario"]
         feedback = analyze_response(message_text, scenario)
         await update.message.reply_text(f"📋 Đánh giá từ trợ lý:\n\n{feedback}")
-        user_states[user_id]["status"] = "idle"
+    
+        # ➕ Gợi ý tiếp tục
+        await update.message.reply_text("🔄 Nào, thêm một tình huống tiếp theo nhé:")
+    
+        # Gửi tiếp tình huống mới
+        next_scenario = pick_random_scenario()
+        scenario_number = chunks.index(next_scenario) + 1
+        visible = extract_visible_part(next_scenario)
+    
+        await update.message.reply_text(f"🧪 Tình huống {scenario_number:02d}:\n\n{visible}")
+        user_states[user_id] = {"status": "awaiting_response", "scenario": next_scenario}
         return
 
 # --- Web UI ---
