@@ -18,6 +18,7 @@ OPENAI_MODEL = "gpt-4-turbo"
 
 # --- Load và xử lý PDF ---
 def extract_scenarios_from_pdf(path, is_emergency=True):
+    """Trích xuất từng tình huống từ file PDF theo kiểu định dạng"""
     doc = fitz.open(path)
     full_text = "\n".join([page.get_text() for page in doc])
     pattern = r"\n\d{1,2}\.\s" if not is_emergency else r"🧪 Tình huống khẩn cấp \d{1,2}:"
@@ -29,7 +30,7 @@ def extract_scenarios_from_pdf(path, is_emergency=True):
 emergency_scenarios = extract_scenarios_from_pdf("tinh_huong_khan_cap.pdf", is_emergency=True)
 communication_scenarios = extract_scenarios_from_pdf("tinh_huong_giao_tiep.pdf", is_emergency=False)
 
-# --- Trích phần hiển thị phù hợp ---
+# --- Xử lý nội dung để hiển thị cho người dùng ---
 def extract_visible_emergency(scenario):
     lines = scenario.split("\n")
     title = lines[0] if lines else "Tình huống khẩn cấp"
@@ -54,7 +55,7 @@ def extract_visible_communication(scenario):
     formatted = "\n".join(f"- {a}" for a in actions)
     return f"💬 {question}\n\n✅ Cách xử lý đề xuất:\n{formatted}"
 
-# --- Chấm điểm từ GPT ---
+# --- Gửi prompt GPT để đánh giá phản hồi của người dùng ---
 def analyze_response(user_answer, scenario_text, mode):
     prompt = f"""
 Bạn là trợ lý đào tạo điều dưỡng. Hãy đánh giá phản hồi của học viên dựa trên tình huống và đưa ra nhận xét theo 4 mục:
@@ -78,7 +79,7 @@ Bạn là trợ lý đào tạo điều dưỡng. Hãy đánh giá phản hồi 
     )
     return res.choices[0].message.content.strip()
 
-# --- Tách số sao từ phản hồi GPT ---
+# --- Trích xuất số sao từ phản hồi của GPT ---
 def extract_star_rating(feedback_text):
     star_match = re.search(r"(\d)\s*sao", feedback_text.lower())
     if star_match:
@@ -86,38 +87,50 @@ def extract_star_rating(feedback_text):
         return "⭐" * min(max(num, 1), 5)
     return "⭐"
 
-# --- Giao tiếp Telegram ---
+# --- Trạng thái người dùng ---
 user_states = {}
 
+# --- Hàm chính xử lý tin nhắn ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     message_text = update.message.text.strip()
     lowered_text = message_text.lower()
 
-    greetings = ["hi", "hello", "xin chào", "chào", "alo", "yo","chao", "2", "/start"]
+    greetings = ["hi", "hello", "xin chào", "chào", "alo", "yo", "chao", "2", "/start"]
+
+    # Tạo trạng thái mới nếu lần đầu tương tác
     if user_id not in user_states:
         user_states[user_id] = {"mode": "emergency", "status": "idle"}
 
     state = user_states[user_id]
 
+    # Gửi tình huống đầu tiên nếu ở trạng thái idle
     if state["status"] == "idle":
         mode = state["mode"]
         scenario = random.choice(emergency_scenarios) if mode == "emergency" else random.choice(communication_scenarios)
         text = extract_visible_emergency(scenario) if mode == "emergency" else extract_visible_communication(scenario)
 
         if lowered_text in greetings:
-            await update.message.reply_text("👋 Xin chào! Tôi là TRỢ LÝ AI [BV Lâm Hoa] – chúng ta sẽ cùng luyện phản xạ tình huống điều dưỡng. Hãy bắt đầu với tình huống đầu tiên nhé!")
+            await update.message.reply_text("👋 Xin chào! Tôi là TRỢ LÝ AI [BV Lâm Hoa]. \n\nChúng ta sẽ cùng luyện phản xạ tình huống điều dưỡng. Hãy bắt đầu với tình huống đầu tiên nhé!")
             await asyncio.sleep(1)
+
         await update.message.reply_text(f"📌 Đây là tình huống {'KHẨN CẤP' if mode == 'emergency' else 'GIAO TIẾP'} – hãy đưa ra xử lý phù hợp.\n\n{text}")
         user_states[user_id] = {"mode": mode, "status": "awaiting_response", "scenario": scenario}
+        return
 
+    # Phân tích phản hồi nếu đang chờ trả lời
     if state["status"] == "awaiting_response":
         scenario = state["scenario"]
         mode = state["mode"]
+
+        # Gửi phản hồi đến GPT và trích sao
         feedback = analyze_response(message_text, scenario, mode)
         stars = extract_star_rating(feedback)
+
+        # Phản hồi lại học viên
         await update.message.reply_text(f"📋 Đánh giá từ trợ lý: {stars}\n\n{feedback}")
 
+        # Tạo tình huống tiếp theo (luân phiên)
         next_mode = "communication" if mode == "emergency" else "emergency"
         next_scenario = random.choice(emergency_scenarios) if next_mode == "emergency" else random.choice(communication_scenarios)
         next_text = extract_visible_emergency(next_scenario) if next_mode == "emergency" else extract_visible_communication(next_scenario)
@@ -126,15 +139,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_states[user_id] = {"mode": next_mode, "status": "awaiting_response", "scenario": next_scenario}
         return
 
-# --- Web UI ---
+# --- Web UI nếu có ---
 @flask_app.route("/", methods=["GET"])
 def index():
     return render_template("index.html")
 
+# --- Chạy Flask song song với Telegram bot ---
 def run_flask():
     flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
 
-# --- Telegram Bot ---
+# --- Chạy bot Telegram ---
 def main():
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
     if not TELEGRAM_TOKEN:
