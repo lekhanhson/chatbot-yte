@@ -94,7 +94,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message_text = update.message.text.strip()
     lowered_text = message_text.lower()
 
-    greetings = ["hi", "hello", "xin chào", "chào", "alo", "yo"]
+    greetings = ["hi", "hello", "xin chào", "chào", "alo", "yo","chao", "2", "/start"]
     if user_id not in user_states:
         user_states[user_id] = {"mode": "emergency", "status": "idle"}
 
