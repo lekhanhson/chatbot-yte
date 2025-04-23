@@ -54,6 +54,38 @@ def extract_visible_communication(scenario):
     formatted = "\n".join(f"- {a}" for a in actions)
     return f"💬 {question}\n\n✅ Cách xử lý đề xuất:\n{formatted}"
 
+# --- Chấm điểm từ GPT ---
+def analyze_response(user_answer, scenario_text, mode):
+    prompt = f"""
+Bạn là trợ lý đào tạo điều dưỡng. Hãy đánh giá phản hồi của học viên dựa trên tình huống và đưa ra nhận xét theo 4 mục:
+1. Câu trả lời có phù hợp không?
+2. Nếu chưa đúng thì sai ở đâu?
+3. Gợi ý và lưu ý thêm cho học viên
+4. Đánh giá mức độ: X sao (dùng ký hiệu ⭐ từ 1 đến 5)
+
+---
+📌 Tình huống:
+{scenario_text}
+
+✍️ Phản hồi của học viên:
+{user_answer}
+"""
+    res = openai.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2,
+        max_tokens=500
+    )
+    return res.choices[0].message.content.strip()
+
+# --- Tách số sao từ phản hồi GPT ---
+def extract_star_rating(feedback_text):
+    star_match = re.search(r"(\d)\s*sao", feedback_text.lower())
+    if star_match:
+        num = int(star_match.group(1))
+        return "⭐" * min(max(num, 1), 5)
+    return "⭐"
+
 # --- Giao tiếp Telegram ---
 user_states = {}
 
@@ -69,23 +101,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_states[user_id]["status"] == "idle":
         mode = user_states[user_id]["mode"]
         scenario = random.choice(emergency_scenarios) if mode == "emergency" else random.choice(communication_scenarios)
-        if mode == "emergency":
-            text = extract_visible_emergency(scenario)
-        else:
-            text = extract_visible_communication(scenario)
+        text = extract_visible_emergency(scenario) if mode == "emergency" else extract_visible_communication(scenario)
+        await update.message.reply_text("👋 Xin chào! Tôi là TRỢ LÝ AI[BV Lâm Hoa] – sẽ cùng bạn luyện phản xạ tình huống điều dưỡng. Hãy bắt đầu với câu hỏi đầu tiên nhé!" if lowered_text in greetings else "🔄 Tiếp tục luyện tập nhé!")
+        await update.message.reply_text(f"📌 Đây là tình huống {'KHẨN CẤP' if mode == 'emergency' else 'GIAO TIẾP'} – hãy đưa ra xử lý phù hợp.\n\n{text}")
+        user_states[user_id] = {"mode": mode, "status": "awaiting_response", "scenario": scenario}
+        return
 
-        if lowered_text in greetings:
-            await update.message.reply_text("👋 Xin chào! Tôi là TRỢ LÝ AI BV Lâm Hoa – sẽ cùng bạn luyện phản xạ tình huống điều dưỡng. Hãy bắt đầu với câu hỏi đầu tiên nhé!")
-        else:
-            await update.message.reply_text("🔄 Tiếp tục luyện tập nhé!")
+    if user_states[user_id]["status"] == "awaiting_response":
+        scenario = user_states[user_id]["scenario"]
+        mode = user_states[user_id]["mode"]
+        feedback = analyze_response(message_text, scenario, mode)
+        stars = extract_star_rating(feedback)
+        await update.message.reply_text(f"📋 Đánh giá từ trợ lý: {stars}\n\n{feedback}")
 
-        await update.message.reply_text(f"📌 Đây là tình huống {'KHẨN CẤP' if mode == 'emergency' else 'GIAO TIẾP'} – hãy đưa ra xử lý phù hợp.
-
-{text}")
-
-        # Ghi lại để luân phiên
         next_mode = "communication" if mode == "emergency" else "emergency"
-        user_states[user_id] = {"mode": next_mode, "status": "idle"}
+        next_scenario = random.choice(emergency_scenarios) if next_mode == "emergency" else random.choice(communication_scenarios)
+        next_text = extract_visible_emergency(next_scenario) if next_mode == "emergency" else extract_visible_communication(next_scenario)
+
+        await update.message.reply_text(f"🔄 Nào, tiếp tục với tình huống {'KHẨN CẤP' if next_mode == 'emergency' else 'GIAO TIẾP'} tiếp theo nhé:\n\n{next_text}")
+        user_states[user_id] = {"mode": next_mode, "status": "awaiting_response", "scenario": next_scenario}
         return
 
 # --- Web UI ---
