@@ -32,26 +32,20 @@ communication_scenarios = extract_scenarios_from_pdf("tinh_huong_giao_tiep.pdf",
 
 # --- Hiển thị tình huống khẩn cấp ---
 def extract_visible_emergency(scenario):
-    lines = scenario.split("\n")
+    lines = scenario.split("")
     title = lines[0] if lines else "Tình huống khẩn cấp"
     desc = ""
-    actions = []
-    mode = "desc"
     for line in lines[1:]:
         if line.lower().startswith("cần thực hiện"):
-            mode = "actions"
-            continue
-        if mode == "desc":
-            desc += line.strip() + " "
-        elif mode == "actions" and line.strip():
-            actions.append("- " + line.strip())
-    return f"🧪 {title}\n\n📍 Mô tả: {desc.strip()}\n\n✅ Cần thực hiện:\n" + "\n".join(actions)
+            break
+        desc += line.strip() + " "
+    return f"🔥 {title} \nMô tả: {desc.strip()}\n\n 💗 Bạn sẽ xử lý thế nào?"
 
 # --- Hiển thị tình huống giao tiếp ---
 def extract_visible_communication(scenario):
     parts = scenario.split("Đáp án:")
     question = parts[0].strip()
-    return f"💬 {question}\n\n📝 Bạn sẽ xử lý thế nào?"
+    return f"💬 {question}\n\n 💗 Bạn sẽ xử lý thế nào?"
 
 # --- Phân tích phản hồi từ người dùng bằng GPT ---
 def analyze_response(user_answer, scenario_text, mode):
@@ -107,7 +101,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = extract_visible_emergency(scenario) if mode == "emergency" else extract_visible_communication(scenario)
 
         if lowered_text in greetings:
-            await update.message.reply_text("👋 Xin chào! Tôi là TRỢ LÝ AI [BV Lâm Hoa].\n\nChúng ta sẽ cùng luyện phản xạ tình huống điều dưỡng. Hãy bắt đầu với tình huống đầu tiên nhé!")
+            await update.message.reply_text("👋 Xin chào! Tôi là TRỢ LÝ AI [BV Lâm Hoa].\n\nChúng ta sẽ cùng luyện phản xạ tình huống điều dưỡng.\nBắt đầu với tình huống đầu tiên nhé!")
             await asyncio.sleep(1)
 
         await update.message.reply_text(f"📌 Đây là tình huống {'KHẨN CẤP' if mode == 'emergency' else 'GIAO TIẾP'} – hãy đưa ra xử lý phù hợp.\n\n{text}")
