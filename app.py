@@ -51,10 +51,9 @@ def extract_visible_emergency(scenario):
 def extract_visible_communication(scenario):
     parts = scenario.split("Đáp án:")
     question = parts[0].strip()
-    answer = parts[1].strip() if len(parts) > 1 else ""
-    actions = re.findall(r"•\s+(.*)", answer)
-    formatted = "\n".join(f"- {a}" for a in actions)
-    return f"💬 {question}\n\n✅ Cách xử lý đề xuất:\n{formatted}"
+    return f"💬 {question}
+
+📝 Bạn sẽ xử lý thế nào?"
 
 # --- Phân tích phản hồi từ người dùng bằng GPT ---
 def analyze_response(user_answer, scenario_text, mode):
