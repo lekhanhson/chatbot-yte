@@ -32,7 +32,7 @@ communication_scenarios = extract_scenarios_from_pdf("tinh_huong_giao_tiep.pdf",
 
 # --- Hiển thị tình huống khẩn cấp ---
 def extract_visible_emergency(scenario):
-    lines = scenario.split("")
+    lines = scenario.split("\n")
     title = lines[0] if lines else "Tình huống khẩn cấp"
     desc = ""
     for line in lines[1:]:
