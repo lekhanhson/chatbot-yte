@@ -81,7 +81,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text(f"📌 Đây là tình huống {'KHẨN CẤP' if mode == 'emergency' else 'GIAO TIẾP'} – hãy xử lý phù hợp.
 
-" + text)
+" + text) + text)
 
         # Ghi lại để luân phiên
         next_mode = "communication" if mode == "emergency" else "emergency"
