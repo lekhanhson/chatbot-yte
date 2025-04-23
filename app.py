@@ -50,7 +50,7 @@ def extract_visible_communication(scenario):
 # --- Phân tích phản hồi từ người dùng bằng GPT ---
 def analyze_response(user_answer, scenario_text, mode):
     prompt = f"""
-Bạn là trợ lý đào tạo điều dưỡng. Hãy đánh giá phản hồi của học viên dựa trên tình huống và đưa ra nhận xét theo 3 mục:
+Bạn là trợ lý đào tạo điều dưỡng. Hãy đánh giá phản hồi của học viên dựa trên tình huống và đưa ra nhận xét ngắn gọn theo 3 mục:
 1. Câu trả lời có phù hợp không? Nếu chưa đúng thì sai ở đâu?
 2. Gợi ý và lưu ý thêm cho học viên
 3. Đánh giá mức độ: X sao (dùng ký hiệu ⭐ từ 1 đến 5)
