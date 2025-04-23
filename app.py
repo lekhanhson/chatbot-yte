@@ -75,13 +75,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text = extract_visible_communication(scenario)
 
         if lowered_text in greetings:
-            await update.message.reply_text("👋 Xin chào! Tôi là TRỢ LÝ AI BV Lâm Hoa – sẽ cùng bạn luyện phản xạ tình huống điều dưỡng. Hãy bắt đầu với câu hỏi đầu tiên nhé!")
+            await update.message.reply_text("👋 Xin chào! Tôi là TRỢ LÝ AI [BV Lâm Hoa] – sẽ cùng bạn luyện phản xạ tình huống điều dưỡng. Hãy bắt đầu với câu hỏi đầu tiên nhé!")
         else:
             await update.message.reply_text("🔄 Tiếp tục luyện tập nhé!")
 
         await update.message.reply_text(f"📌 Đây là tình huống {'KHẨN CẤP' if mode == 'emergency' else 'GIAO TIẾP'} – hãy xử lý phù hợp.
 
-" + text) + text)
+{text}") + text)
 
         # Ghi lại để luân phiên
         next_mode = "communication" if mode == "emergency" else "emergency"
