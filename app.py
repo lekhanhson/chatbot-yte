@@ -102,11 +102,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         mode = user_states[user_id]["mode"]
         scenario = random.choice(emergency_scenarios) if mode == "emergency" else random.choice(communication_scenarios)
         text = extract_visible_emergency(scenario) if mode == "emergency" else extract_visible_communication(scenario)
-        await update.message.reply_text("👋 Xin chào! Tôi là TRỢ LÝ AI [BV Lâm Hoa]\nChúng ta sẽ cùng luyện phản xạ tình huống điều dưỡng. Hãy bắt đầu với tình huống đầu tiên nhé..")
-await asyncio.sleep(1)
-await update.message.reply_text(f"📌 Đây là tình huống {'KHẨN CẤP' if mode == 'emergency' else 'GIAO TIẾP'} – hãy đưa ra xử lý phù hợp.
-
-{text}")
+        await update.message.reply_text("👋 Xin chào! Tôi là TRỢ LÝ AI [BV Lâm Hoa] – chúng ta sẽ cùng luyện phản xạ tình huống điều dưỡng. Hãy bắt đầu với tình huống đầu tiên nhé!")
+        await asyncio.sleep(1)
+        await update.message.reply_text(f"📌 Đây là tình huống {'KHẨN CẤP' if mode == 'emergency' else 'GIAO TIẾP'} – hãy đưa ra xử lý phù hợp.\n\n{text}")
 user_states[user_id] = {"mode": mode, "status": "awaiting_response", "scenario": scenario}
 return
         await update.message.reply_text(f"📌 Đây là tình huống {'KHẨN CẤP' if mode == 'emergency' else 'GIAO TIẾP'} – hãy đưa ra xử lý phù hợp.\n\n{text}")
