@@ -108,8 +108,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if lowered_text in greetings:
             await update.message.reply_text("👋 Xin chào! Tôi là TRỢ LÝ AI [BV Lâm Hoa] – chúng ta sẽ cùng luyện phản xạ tình huống điều dưỡng. Hãy bắt đầu với tình huống đầu tiên nhé!")
             await asyncio.sleep(1)
-            await update.message.reply_text(f"📌 Đây là tình huống {'KHẨN CẤP' if mode == 'emergency' else 'GIAO TIẾP'} – hãy đưa ra xử lý phù hợp.\n\n{text}")
-            user_states[user_id] = {"mode": mode, "status": "awaiting_response", "scenario": scenario}
+        await update.message.reply_text(f"📌 Đây là tình huống {'KHẨN CẤP' if mode == 'emergency' else 'GIAO TIẾP'} – hãy đưa ra xử lý phù hợp.\n\n{text}")
+        user_states[user_id] = {"mode": mode, "status": "awaiting_response", "scenario": scenario}
 
     if state["status"] == "awaiting_response":
         scenario = state["scenario"]
