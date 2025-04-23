@@ -98,22 +98,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id not in user_states:
         user_states[user_id] = {"mode": "emergency", "status": "idle"}
 
-    if user_states[user_id]["status"] == "idle":
-        mode = user_states[user_id]["mode"]
+    state = user_states[user_id]
+
+    if state["status"] == "idle":
+        mode = state["mode"]
         scenario = random.choice(emergency_scenarios) if mode == "emergency" else random.choice(communication_scenarios)
         text = extract_visible_emergency(scenario) if mode == "emergency" else extract_visible_communication(scenario)
-        await update.message.reply_text("👋 Xin chào! Tôi là TRỢ LÝ AI [BV Lâm Hoa] – chúng ta sẽ cùng luyện phản xạ tình huống điều dưỡng. Hãy bắt đầu với tình huống đầu tiên nhé!")
-        await asyncio.sleep(1)
-        await update.message.reply_text(f"📌 Đây là tình huống {'KHẨN CẤP' if mode == 'emergency' else 'GIAO TIẾP'} – hãy đưa ra xử lý phù hợp.\n\n{text}")
-user_states[user_id] = {"mode": mode, "status": "awaiting_response", "scenario": scenario}
-return
+
+        if lowered_text in greetings:
+            await update.message.reply_text("👋 Xin chào! Tôi là TRỢ LÝ AI [BV Lâm Hoa] – chúng ta sẽ cùng luyện phản xạ tình huống điều dưỡng. Hãy bắt đầu với tình huống đầu tiên nhé!")
+            await asyncio.sleep(1)
+
         await update.message.reply_text(f"📌 Đây là tình huống {'KHẨN CẤP' if mode == 'emergency' else 'GIAO TIẾP'} – hãy đưa ra xử lý phù hợp.\n\n{text}")
         user_states[user_id] = {"mode": mode, "status": "awaiting_response", "scenario": scenario}
         return
 
-    if user_states[user_id]["status"] == "awaiting_response":
-        scenario = user_states[user_id]["scenario"]
-        mode = user_states[user_id]["mode"]
+    if state["status"] == "awaiting_response":
+        scenario = state["scenario"]
+        mode = state["mode"]
         feedback = analyze_response(message_text, scenario, mode)
         stars = extract_star_rating(feedback)
         await update.message.reply_text(f"📋 Đánh giá từ trợ lý: {stars}\n\n{feedback}")
