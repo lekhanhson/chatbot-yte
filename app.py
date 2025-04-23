@@ -114,7 +114,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         feedback = analyze_response(message_text, scenario, mode)
         stars = extract_star_rating(feedback)
 
-        await update.message.reply_text(f"📋 Đánh giá từ trợ lý: {stars}\n\n{feedback}")
+        await update.message.reply_text(f"📋 CHẤT LƯỢNG CÂU TRẢ LỜI: {stars}\n\n{feedback}")
 
         next_mode = "communication" if mode == "emergency" else "emergency"
         next_scenario = random.choice(emergency_scenarios) if next_mode == "emergency" else random.choice(communication_scenarios)
