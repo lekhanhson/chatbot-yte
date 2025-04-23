@@ -102,7 +102,7 @@ def get_emotional_feedback(stars):
 def extract_visible_part(scenario_text):
     cutoff = "Xử lý tại chỗ"
     parts = scenario_text.split(cutoff)
-    return parts[0].strip() + "\n\n🔍 Bạn sẽ xử lý thế nào trong 3 phút đầu tiên?"
+    return parts[0].strip() + "\n\n🔍 Bạn sẽ xử lý theo trình tự nào khi gặp tình huống khẩn cấp bên trên?"
 
 # --- Giao tiếp Telegram ---
 user_states = {}
