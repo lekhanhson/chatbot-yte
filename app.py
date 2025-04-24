@@ -83,7 +83,7 @@ def summarize_feedback(star_list):
         msg = "Bạn có nền tảng tốt, hãy luyện tập thêm để nâng cao hơn nữa."
     else:
         msg = "Bạn cần luyện thêm để nắm vững kỹ năng phản xạ."
-    return f"🎯 Bạn vừa hoàn thành 4 tình huống.\nĐiểm trung bình: {stars}\n\n💬 Nhận xét: {msg}"
+    return f"**********************************\n📢 Bạn vừa hoàn thành 4 tình huống.\nĐiểm trung bình: {stars}\n\n📌 Nhận xét: {msg}"
 
 # --- Quản lý trạng thái người dùng ---
 user_states = {}
@@ -97,7 +97,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     greetings = ["hi", "hello", "xin chào", "chào", "alo", "yo", "chao", "/start"]
     affirm = ["ok", "oki", "có", "yes"]
     deny = ["không", "ko", "no"]
-
+    tinh_huong_khan_cap = '======================\n🔥 Tình huống KHẨN CẤP\n----------------------'
+    tinh_huong_giao_tiep = '========================\n💬 Tình huống GIAO TIẾP\n------------------------'
+    
     if user_id not in user_states:
         user_states[user_id] = {
             "mode": "emergency",
@@ -120,7 +122,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             next_scenario = random.choice(emergency_scenarios) if next_mode == "emergency" else random.choice(communication_scenarios)
             next_text = extract_visible_emergency(next_scenario) if next_mode == "emergency" else extract_visible_communication(next_scenario)
 
-            await update.message.reply_text(f"{'🔥 Tình huống KHẨN CẤP' if next_mode == 'emergency' else '💬 Tình huống GIAO TIẾP'}\n\n{next_text}")
+            await update.message.reply_text(f"{tinh_huong_khan_cap if next_mode == 'emergency' else tinh_huong_giao_tiep}\n\n{next_text}")
             state.update({"scenario": next_scenario})
             return
             return
@@ -142,7 +144,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("👋 Xin chào! Tôi là TRỢ LÝ AI \n[Bệnh Viện Đa khoa Lâm Hoa].\n\nChúng ta sẽ cùng luyện phản xạ tình huống điều dưỡng.\nBắt đầu với tình huống đầu tiên nhé!")
             await asyncio.sleep(1)
 
-        await update.message.reply_text(f"{'🔥 Tình huống KHẨN CẤP' if mode == 'emergency' else '💬 Tình huống GIAO TIẾP'}\n\n{visible_text}")
+        await update.message.reply_text(f"{tinh_huong_khan_cap if mode == 'emergency' else tinh_huong_giao_tiep}\n\n{visible_text}")
         state.update({"scenario": scenario, "status": "awaiting_response"})
         return
 
@@ -159,7 +161,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Nếu đã trả lời đủ 4 tình huống thì tổng kết và hỏi tiếp tục
         if len(state["history"]) >= 4:
-            await update.message.reply_text("🙏 Cảm ơn bạn, chúng ta đã luyện tập 4 tình huống, cùng nhìn lại nhé!")
             summary = summarize_feedback(state["history"])
             await update.message.reply_text(summary)
             await update.message.reply_text("🔁 Bạn có muốn tiếp tục luyện tập không? (ok / không)")
@@ -171,7 +172,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         next_scenario = random.choice(emergency_scenarios) if next_mode == "emergency" else random.choice(communication_scenarios)
         next_text = extract_visible_emergency(next_scenario) if next_mode == "emergency" else extract_visible_communication(next_scenario)
 
-        await update.message.reply_text(f"{'🔥 Tình huống KHẨN CẤP' if next_mode == 'emergency' else '💬 Tình huống GIAO TIẾP'}\n\n{next_text}")
+        await update.message.reply_text(f"{tinh_huong_khan_cap if next_mode == 'emergency' else tinh_huong_giao_tiep}\n\n{next_text}")
 
         # Cập nhật trạng thái cho lần tiếp theo
         state.update({"mode": next_mode, "scenario": next_scenario, "status": "awaiting_response"})
