@@ -83,7 +83,7 @@ def summarize_feedback(star_list):
         msg = "Bạn có nền tảng tốt, hãy luyện tập thêm để nâng cao hơn nữa."
     else:
         msg = "Bạn cần luyện thêm để nắm vững kỹ năng phản xạ."
-    return f"🎯 Bạn vừa hoàn thành 4 tình huống.\nĐiểm trung bình: {stars}\n\n=>Nhận xét: {msg}"
+    return f"🎯 Bạn vừa hoàn thành 4 tình huống.\nĐiểm trung bình: {stars}\n\n💬 Nhận xét: {msg}"
 
 # --- Quản lý trạng thái người dùng ---
 user_states = {}
@@ -141,25 +141,30 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         scenario = state["scenario"]
         mode = state["mode"]
 
+        # Gửi phản hồi GPT đánh giá câu trả lời
         feedback = analyze_response(text, scenario, mode)
         stars = extract_star_rating(feedback)
-        state["history"].append(stars)
+        state["history"].append(stars)  # lưu lại điểm số
 
-        await update.message.reply_text(f"📋 NHẬN XÉT TỪ TRỢ LÝ AI:\n\n{feedback}")
+        await update.message.reply_text(f"📋 NHẬN XÉT TỪ TRỢ LÝ AI:n\n\n{feedback}")
 
+        # Nếu đã trả lời đủ 4 tình huống thì tổng kết và hỏi tiếp tục
         if len(state["history"]) >= 4:
             await update.message.reply_text("🙏 Cảm ơn bạn, chúng ta đã luyện tập 4 tình huống, cùng nhìn lại nhé!")
             summary = summarize_feedback(state["history"])
             await update.message.reply_text(summary)
             await update.message.reply_text("🔁 Bạn có muốn tiếp tục luyện tập không? (ok / không)")
             state["awaiting_continue"] = True
-            return
+            return  # 🔁 Dừng tại đây, không gửi tiếp tình huống mới
 
+        # Nếu chưa đủ 4 tình huống thì gửi tiếp
         next_mode = "communication" if mode == "emergency" else "emergency"
         next_scenario = random.choice(emergency_scenarios) if next_mode == "emergency" else random.choice(communication_scenarios)
         next_text = extract_visible_emergency(next_scenario) if next_mode == "emergency" else extract_visible_communication(next_scenario)
 
         await update.message.reply_text(f"{'🔥 Tình huống KHẨN CẤP' if next_mode == 'emergency' else '💬 Tình huống GIAO TIẾP'}\n\n{next_text}")
+
+        # Cập nhật trạng thái cho lần tiếp theo
         state.update({"mode": next_mode, "scenario": next_scenario, "status": "awaiting_response"})
         return
 
