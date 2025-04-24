@@ -112,8 +112,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state["awaiting_continue"]:
         if lowered_text in affirm:
             state.update({"awaiting_continue": False, "history": []})
-            state["status"] = "idle"
+            state["status"] = "awaiting_response"
             await update.message.reply_text("👍 Tuyệt vời! Chúng ta tiếp tục luyện nhé!")
+
+            # Gửi luôn tình huống tiếp theo sau lời đồng ý
+            next_mode = state["mode"]
+            next_scenario = random.choice(emergency_scenarios) if next_mode == "emergency" else random.choice(communication_scenarios)
+            next_text = extract_visible_emergency(next_scenario) if next_mode == "emergency" else extract_visible_communication(next_scenario)
+
+            await update.message.reply_text(f"{'🔥 Tình huống KHẨN CẤP' if next_mode == 'emergency' else '💬 Tình huống GIAO TIẾP'}\n\n{next_text}")
+            state.update({"scenario": next_scenario})
+            return
             return
         elif lowered_text in deny:
             await update.message.reply_text("⏳ Mình sẽ chờ 30 giây rồi hỏi lại nhé...")
@@ -146,7 +155,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         stars = extract_star_rating(feedback)
         state["history"].append(stars)  # lưu lại điểm số
 
-        await update.message.reply_text(f"📋 NHẬN XÉT TỪ TRỢ LÝ AI:n\n\n{feedback}")
+        await update.message.reply_text(f"📋 NHẬN XÉT TỪ TRỢ LÝ AI:\n\n{feedback}")
 
         # Nếu đã trả lời đủ 4 tình huống thì tổng kết và hỏi tiếp tục
         if len(state["history"]) >= 4:
