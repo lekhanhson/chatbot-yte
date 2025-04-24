@@ -51,8 +51,8 @@ def extract_visible_communication(scenario):
 def analyze_response(user_answer, scenario_text, mode):
     prompt = f"""
 Bạn là trợ lý đào tạo điều dưỡng. Hãy đánh giá phản hồi của học viên dựa trên tình huống và đưa ra nhận xét ngắn gọn theo 2 mục:
-1. Đạt yêu cầu mức độ: X (thay X bằng ký hiệu ⭐, từ 1 đến 5 ⭐ theo mức độ phù hợp của câu trả lời từ học viện, sau đó giải thích ngắn gọn mang tính khuyến khích)
-2. Đáp án từ tài liệu: (nếu số thứ tự của tình huống trong tài liệu, sau đó trích nguyên văn đáp án/cách xử lý trong tài liệu, không giải thích thêm bớt từ gì)
+1. Mức độ phù hợp của câu trả lời: X (thay X bằng ký hiệu ⭐, từ 1 đến 5 ⭐ theo mức độ phù hợp của câu trả lời từ học viện, sau đó giải thích ngắn gọn mang tính khuyến khích)
+2. Đáp án từ tài liệu: (sau đó trích nguyên văn đáp án/cách xử lý trong tài liệu, không giải thích thêm bớt từ gì)
 
 ---
 📌 Tình huống:
