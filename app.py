@@ -51,8 +51,8 @@ def extract_visible_communication(scenario):
 def analyze_response(user_answer, scenario_text, mode):
     prompt = f"""
 Bạn là trợ lý đào tạo điều dưỡng. Hãy đánh giá phản hồi của học viên dựa trên tình huống và đưa ra nhận xét ngắn gọn theo 3 mục:
-1. Câu trả lời có phù hợp không?
-2. Gợi ý và lưu ý thêm cho học viên
+1. Câu trả lời (có phù hợp không)
+2. Gợi ý và lưu ý (ngắn gọn)
 3. Đánh giá mức độ: X sao (dùng ký hiệu ⭐ từ 1 đến 5)
 
 ---
@@ -103,7 +103,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("👋 Xin chào! Tôi là TRỢ LÝ AI [BV Lâm Hoa].\n\nChúng ta sẽ cùng luyện phản xạ tình huống điều dưỡng.\nBắt đầu với tình huống đầu tiên nhé!")
             await asyncio.sleep(1)
 
-        await update.message.reply_text(f"📌 Đây là tình huống {'KHẨN CẤP 🔥' if mode == 'emergency' else 'GIAO TIẾP 💬'}.\n\n{text}")
+        await update.message.reply_text(f"{'🔥 Đây là tình huống KHẨN CẤP' if mode == 'emergency' else '💬 Đây là tình huống GIAO TIẾP'}\n\n{text}")
         user_states[user_id] = {"mode": mode, "status": "awaiting_response", "scenario": scenario}
         return
 
@@ -114,13 +114,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         feedback = analyze_response(message_text, scenario, mode)
         stars = extract_star_rating(feedback)
 
-        await update.message.reply_text(f"📋 NHẬN XÉT TỪ TRỢ LÝ:\n\n{feedback}")
+        await update.message.reply_text(f"📋 NHẬN XÉT TỪ TRỢ LÝ AI:\n\n{feedback}")
 
         next_mode = "communication" if mode == "emergency" else "emergency"
         next_scenario = random.choice(emergency_scenarios) if next_mode == "emergency" else random.choice(communication_scenarios)
         next_text = extract_visible_emergency(next_scenario) if next_mode == "emergency" else extract_visible_communication(next_scenario)
 
-        await update.message.reply_text(f"📌 Tiếp tục với tình huống {'KHẨN CẤP 🔥' if next_mode == 'emergency' else 'GIAO TIẾP 💬'} nhé:\n\n{next_text}")
+        await update.message.reply_text(f"{'🔥 Tiếp tục với tình huống KHẨN CẤP' if next_mode == 'emergency' else '💬 Tiếp tục với tình huống GIAO TIẾP'} \n\n{next_text}")
         user_states[user_id] = {"mode": next_mode, "status": "awaiting_response", "scenario": next_scenario}
         return
 
