@@ -78,23 +78,26 @@ Tuyệt đối không nể nang hay khen xã giao.)
 
 # --- Tách sao từ GPT ---
 def extract_star_rating(feedback_text):
-    star_match = re.search(r"(\d)\s*sao", feedback_text.lower())
-    if star_match:
-        num = int(star_match.group(1))
-        return min(max(num, 1), 5)
+    match = re.search(r"1\..*?([⭐]{1,5})", feedback_text)
+    if match:
+        return len(match.group(1))
     return 1
 
 # --- Tóm tắt sau 4 lượt ---
 def summarize_feedback(star_list):
     avg = sum(star_list) / len(star_list)
-    stars = "⭐" * round(avg)
+    full_stars = int(avg)
+    half_star = avg - full_stars >= 0.5
+    stars = "⭐" * full_stars + ("✨" if half_star else "")
+
     if avg >= 4.5:
         msg = "Bạn thể hiện xuất sắc! Tiếp tục giữ phong độ nhé."
     elif avg >= 3.5:
         msg = "Bạn có nền tảng tốt, hãy luyện tập thêm để nâng cao hơn nữa."
     else:
         msg = "Bạn cần luyện thêm để nắm vững kỹ năng phản xạ."
-    return f"\n**********************************\n📢 Bạn vừa hoàn thành 4 tình huống.\n️\n🎯 Điểm trung bình: {stars}\n\n📌 Nhận xét: {msg}\n**********************************\n"
+
+    return f"\n**********************************\n📢 Bạn vừa hoàn thành 4 tình huống.\n\n🎯 Điểm trung bình: {stars} ({avg:.1f})\n\n📌 Nhận xét: {msg}\n**********************************\n"
 
 # --- Quản lý trạng thái người dùng ---
 user_states = {}
@@ -110,7 +113,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     deny = ["không", "ko", "no"]
     tinh_huong_khan_cap = 'Chúng ta cùng tiếp tục nhé..\n==========================\n🔥 Tình huống KHẨN CẤP'
     tinh_huong_giao_tiep = 'Chúng ta cùng tiếp tục nhé..\n==========================\n💬 Tình huống GIAO TIẾP'
-    
+
     if user_id not in user_states:
         user_states[user_id] = {
             "mode": "emergency",
@@ -128,14 +131,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             state["status"] = "awaiting_response"
             await update.message.reply_text("👍 Tuyệt vời! Chúng ta tiếp tục luyện nhé!")
 
-            # Gửi luôn tình huống tiếp theo sau lời đồng ý
             next_mode = state["mode"]
             next_scenario = random.choice(emergency_scenarios) if next_mode == "emergency" else random.choice(communication_scenarios)
             next_text = extract_visible_emergency(next_scenario) if next_mode == "emergency" else extract_visible_communication(next_scenario)
 
             await update.message.reply_text(f"{tinh_huong_khan_cap if next_mode == 'emergency' else tinh_huong_giao_tiep}\n\n{next_text}")
             state.update({"scenario": next_scenario})
-            return
             return
         elif lowered_text in deny:
             await update.message.reply_text("⏳ Mình sẽ chờ 30 giây rồi hỏi lại nhé...")
@@ -163,29 +164,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         scenario = state["scenario"]
         mode = state["mode"]
 
-        # Gửi phản hồi GPT đánh giá câu trả lời
         feedback = analyze_response(text, scenario, mode)
         stars = extract_star_rating(feedback)
-        state["history"].append(stars)  # lưu lại điểm số
+        state["history"].append(stars)
 
         await update.message.reply_text(f"📋 NHẬN XÉT TỪ TRỢ LÝ AI:\n\n{feedback}")
 
-        # Nếu đã trả lời đủ 4 tình huống thì tổng kết và hỏi tiếp tục
         if len(state["history"]) >= 4:
             summary = summarize_feedback(state["history"])
             await update.message.reply_text(summary)
             await update.message.reply_text("🔁 Bạn có muốn tiếp tục luyện tập không? (ok / không)")
             state["awaiting_continue"] = True
-            return  # 🔁 Dừng tại đây, không gửi tiếp tình huống mới
+            return
 
-        # Nếu chưa đủ 4 tình huống thì gửi tiếp
         next_mode = "communication" if mode == "emergency" else "emergency"
         next_scenario = random.choice(emergency_scenarios) if next_mode == "emergency" else random.choice(communication_scenarios)
         next_text = extract_visible_emergency(next_scenario) if next_mode == "emergency" else extract_visible_communication(next_scenario)
 
         await update.message.reply_text(f"{tinh_huong_khan_cap if next_mode == 'emergency' else tinh_huong_giao_tiep}\n\n{next_text}")
-
-        # Cập nhật trạng thái cho lần tiếp theo
         state.update({"mode": next_mode, "scenario": next_scenario, "status": "awaiting_response"})
         return
 
