@@ -14,7 +14,7 @@ flask_app = Flask(__name__)
 
 # --- OpenAI API ---
 openai.api_key = os.getenv("OPENAI_API_KEY")
-OPENAI_MODEL = "gpt-4-turbo"
+OPENAI_MODEL = "gpt-3.5-turbo"
 
 # --- Load và xử lý PDF ---
 def extract_scenarios_from_pdf(path, is_emergency=True):
