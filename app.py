@@ -47,7 +47,7 @@ def extract_visible_communication(scenario):
 def analyze_response(user_answer, scenario_text, mode):
     prompt = f"""
 Bạn là trợ lý đào tạo điều dưỡng. Hãy đánh giá phản hồi của học viên dựa trên tình huống và đưa ra nhận xét ngắn gọn theo 2 mục:
-1. Mức độ phù hợp của câu trả lời: X (thay X bằng ký hiệu ⭐, từ 1 đến 5 ⭐ theo mức độ phù hợp của câu trả lời từ học viện, sau đó giải thích ngắn gọn mang tính khuyến khích)
+1. Mức độ phù hợp của câu trả lời: X (thay X bằng ký hiệu ⭐, từ 1 đến 5 ⭐, cách chấm sao dựa vào mức độ đúng so với tài liệu. Nếu học viên chỉ nêu được 1 phần ý trong đáp án, chỉ cho 2 hoặc 3 sao. Phải đủ ý và đúng trọng tâm mới được 4 hoặc 5 sao. Trả lời sai lệch hoặc không rõ ý thì cho 1 sao. Hạn chế nể nang. sau chấm sao thì giải thích ngắn gọn mang tính khuyến khích)
 2. Đáp án từ tài liệu: (sau đó trích nguyên văn đáp án/cách xử lý trong tài liệu, không giải thích thêm bớt từ gì)
 
 ---
@@ -83,7 +83,7 @@ def summarize_feedback(star_list):
         msg = "Bạn có nền tảng tốt, hãy luyện tập thêm để nâng cao hơn nữa."
     else:
         msg = "Bạn cần luyện thêm để nắm vững kỹ năng phản xạ."
-    return f"**********************************\n📢 Bạn vừa hoàn thành 4 tình huống.\nĐiểm trung bình: {stars}\n\n📌 Nhận xét: {msg}"
+    return f"\n**********************************\n📢 Bạn vừa hoàn thành 4 tình huống.\n️\n🎯 Điểm trung bình: {stars}\n\n📌 Nhận xét: {msg}\n**********************************\n"
 
 # --- Quản lý trạng thái người dùng ---
 user_states = {}
@@ -97,8 +97,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     greetings = ["hi", "hello", "xin chào", "chào", "alo", "yo", "chao", "/start"]
     affirm = ["ok", "oki", "có", "yes"]
     deny = ["không", "ko", "no"]
-    tinh_huong_khan_cap = '======================\n🔥 Tình huống KHẨN CẤP\n----------------------'
-    tinh_huong_giao_tiep = '========================\n💬 Tình huống GIAO TIẾP\n------------------------'
+    tinh_huong_khan_cap = '=====================\n🔥 Tình huống KHẨN CẤP'
+    tinh_huong_giao_tiep = '=====================\n💬 Tình huống GIAO TIẾP'
     
     if user_id not in user_states:
         user_states[user_id] = {
